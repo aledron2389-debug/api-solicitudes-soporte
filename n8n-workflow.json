@@ -95,7 +95,7 @@
     {
       "id": "a1b2c3d4-0002-4000-8000-000000000002",
       "name": "HTTP Request — Registrar en API",
-      "notes": "Reemplaza <render-url> por la URL real de Render, por ejemplo api-solicitudes-soporte.onrender.com. La API valida los datos y devuelve el folio generado (SOL-2026-0001…).",
+      "notes": "La API local corre en http://localhost:5000 (por instrucción del docente no hay despliegue en Render; la API debe estar en marcha con python app.py y DATABASE_URL de Neon). La API valida los datos y devuelve el folio generado (SOL-2026-0001…).",
       "parameters": {
         "jsonBody": "={\n  \"nombre_solicitante\": \"{{ $json['Nombre'] }}\",\n  \"email\": \"{{ $json['Email'] }}\",\n  \"categoria\": \"{{ $json['Categoría'] }}\",\n  \"prioridad\": \"{{ $json['Prioridad'] }}\",\n  \"descripcion\": \"{{ $json['Descripción'] }}\",\n  \"origen\": \"google_forms\"\n}",
         "method": "POST",
@@ -109,7 +109,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "url": "https://<render-url>/api/solicitudes"
+        "url": "http://localhost:5000/api/solicitudes"
       },
       "position": [
         480,
@@ -244,7 +244,7 @@
       "name": "Sticky Note — Cómo funciona",
       "parameters": {
         "color": 4,
-        "content": "## Flujo: Forms → API → Gmail → Sheets\n\n1. **Google Sheets Trigger**: nueva fila en 'Respuestas' (Google Forms).\n2. **HTTP Request**: POST a https://<render-url>/api/solicitudes con origen 'google_forms'. Reemplazar <render-url> por la URL real de Render.\n3. **IF**: solo continúa si la API responde 201.\n4. **Gmail**: correo de confirmación con el folio al solicitante.\n5. **Google Sheets**: escribe el folio y el estado en la misma fila.\n\nCredenciales a conectar en n8n: Google Sheets (OAuth2) y Gmail (OAuth2). Ver README_N8N.md para el paso a paso.",
+        "content": "## Flujo: Forms → API → Gmail → Sheets\n\n1. **Google Sheets Trigger**: nueva fila en 'Respuestas' (Google Forms).\n2. **HTTP Request**: POST a http://localhost:5000/api/solicitudes con origen 'google_forms'. La API debe estar corriendo en local (python app.py) con DATABASE_URL de Neon; por instrucción del docente no hay despliegue en Render.\n3. **IF**: solo continúa si la API responde 201.\n4. **Gmail**: correo de confirmación con el folio al solicitante.\n5. **Google Sheets**: escribe el folio y el estado en la misma fila.\n\nCredenciales a conectar en n8n: Google Sheets (OAuth2) y Gmail (OAuth2). Ver README_N8N.md para el paso a paso.",
         "height": 260,
         "width": 420
       },

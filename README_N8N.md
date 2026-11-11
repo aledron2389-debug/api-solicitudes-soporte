@@ -1,13 +1,15 @@
 # Workflow n8n — Solicitudes de soporte técnico
 
-Automatiza el flujo completo: **Google Forms → Google Sheets → API (Render/Neon) → Gmail → Google Sheets**.
+Automatiza el flujo completo: **Google Forms → Google Sheets → API local (http://localhost:5000, Neon) → Gmail → Google Sheets**.
+
+> Por instrucción del docente (2026-11-11) no hay despliegue en Render: la API se ejecuta localmente con `python app.py` y `DATABASE_URL` de Neon.
 
 ## Flujo (5 nodos)
 
 | # | Nodo | Qué hace |
 |---|------|----------|
 | 1 | Google Sheets Trigger | Se dispara con cada fila nueva en la hoja `Respuestas` (vinculada a Google Forms). |
-| 2 | HTTP Request — Registrar en API | `POST https://<render-url>/api/solicitudes` con los datos de la fila. La API valida y devuelve el folio (`SOL-2026-…`). |
+| 2 | HTTP Request — Registrar en API | `POST http://localhost:5000/api/solicitudes` con los datos de la fila (API local en marcha). La API valida y devuelve el folio (`SOL-2026-…`). |
 | 3 | IF — ¿Registro exitoso? | Continúa solo si la API responde **201**. Si falla, la ejecución se detiene y se revisa el error en n8n (no se envía correo con un folio inexistente). |
 | 4 | Gmail — Notificar al solicitante | Correo de confirmación con el folio al email del solicitante. |
 | 5 | Google Sheets — Escribir folio y estado | Escribe el folio y el estado `Recibida` en la misma fila que disparó el flujo (columnas `Folio` y `Estado`). |
@@ -23,7 +25,7 @@ Automatiza el flujo completo: **Google Forms → Google Sheets → API (Render/N
 
 | Variable / campo | Dónde | Valor |
 |---|---|---|
-| `<render-url>` | Nodo HTTP Request, campo URL | URL real de Render, sin `https://` inicial duplicado. Ejemplo: `api-solicitudes-soporte.onrender.com`. La URL final queda `https://api-solicitudes-soporte.onrender.com/api/solicitudes`. |
+| URL de la API | Nodo HTTP Request, campo URL | Ya configurada: `http://localhost:5000/api/solicitudes` (API local; por instrucción del docente no hay URL de Render). La API debe estar corriendo con `python app.py` antes de activar el workflow. |
 | `ID_DE_TU_HOJA_DE_GOOGLE_SHEETS` | Nodos Google Sheets Trigger y Google Sheets (campo Document) | Ya configurado en el workflow: `1JO8IqTb_x9qIuJWmczViM3pEWd9V0-2HhA9cQFOSypk` (hoja "Solicitudes de soporte técnico - Respuestas y Dashboard"). Si se usa otra hoja, reemplazar ese ID. |
 | Hoja `Respuestas` | Nodos Google Sheets | Nombre exacto de la pestaña vinculada a Google Forms. |
 | Credencial Google Sheets (OAuth2) | Nodos Google Sheets Trigger y Google Sheets | Cuenta de Google con acceso de edición a la hoja. Se crea en n8n: **Credentials → Google Sheets OAuth2**. |
@@ -69,10 +71,10 @@ Equipo de Soporte Técnico
 
 1. Envía una respuesta de prueba en Google Forms.
 2. En n8n, abre la ejecución y verifica: HTTP Request responde **201** con un `folio`, Gmail aparece como enviado y la fila en Sheets tiene folio y estado.
-3. Comprueba en la API: `GET https://<render-url>/api/solicitudes/<folio>`.
+3. Comprueba en la API local: `GET http://localhost:5000/api/solicitudes/<folio>`.
 4. Si el nodo IF cae en la rama FALSE, abre el nodo HTTP Request en esa ejecución: ahí se ve el error de la API (`detalles` indica qué campo falló, normalmente una categoría o prioridad con otro texto).
 
 ## Qué NO hace este workflow
 
-- No crea la base de datos ni despliega la API (eso es Neon + Render, ver `README.md`).
+- No crea la base de datos ni arranca la API (la base está en Neon y la API se ejecuta localmente con `python app.py`, ver `README.md`).
 - No actualiza el dashboard: el dashboard vive en otra pestaña de la misma hoja y se alimenta de la pestaña `Respuestas` con fórmulas (ver `README.md`).
