@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: api-solicitudes-soporte
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      # DATABASE_URL se configura en el panel de Render (Environment),
+      # con el valor que entrega Neon. No se escribe aquí.
+      - key: DATABASE_URL
+        sync: false

@@ -1,0 +1,263 @@
+{
+  "active": false,
+  "connections": {
+    "Gmail — Notificar al solicitante": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Google Sheets — Escribir folio y estado",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "HTTP Request — Registrar en API",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "HTTP Request — Registrar en API": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "IF — ¿Registro exitoso?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "IF — ¿Registro exitoso?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail — Notificar al solicitante",
+            "type": "main"
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "name": "Solicitudes de soporte — Forms a API y Gmail",
+  "nodes": [
+    {
+      "credentials": {
+        "googleSheetsTriggerOAuth2": {
+          "id": "ID_CREDENCIAL_GOOGLE_SHEETS",
+          "name": "Google Sheets (OAuth2)"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Google Sheets Trigger",
+      "notes": "Se dispara con cada fila nueva en la hoja 'Respuestas' (vinculada a Google Forms). Columnas esperadas: Nombre | Email | Categoría | Prioridad | Descripción. El folio y el estado se escriben después en las columnas Folio y Estado.",
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JO8IqTb_x9qIuJWmczViM3pEWd9V0-2HhA9cQFOSypk",
+          "mode": "url",
+          "value": "1JO8IqTb_x9qIuJWmczViM3pEWd9V0-2HhA9cQFOSypk"
+        },
+        "event": "rowAdded",
+        "options": {},
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "sheetName": {
+          "__rl": true,
+          "cachedResultName": "Respuestas",
+          "mode": "list",
+          "value": "Respuestas"
+        }
+      },
+      "position": [
+        240,
+        300
+      ],
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "HTTP Request — Registrar en API",
+      "notes": "Reemplaza <render-url> por la URL real de Render, por ejemplo api-solicitudes-soporte.onrender.com. La API valida los datos y devuelve el folio generado (SOL-2026-0001…).",
+      "parameters": {
+        "jsonBody": "={\n  \"nombre_solicitante\": \"{{ $json['Nombre'] }}\",\n  \"email\": \"{{ $json['Email'] }}\",\n  \"categoria\": \"{{ $json['Categoría'] }}\",\n  \"prioridad\": \"{{ $json['Prioridad'] }}\",\n  \"descripcion\": \"{{ $json['Descripción'] }}\",\n  \"origen\": \"google_forms\"\n}",
+        "method": "POST",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "https://<render-url>/api/solicitudes"
+      },
+      "position": [
+        480,
+        300
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    },
+    {
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "IF — ¿Registro exitoso?",
+      "notes": "Rama TRUE (201): la API registró la solicitud y devolvió el folio. Rama FALSE: el registro falló (datos inválidos o API caída); revisar la ejecución en n8n y no enviar el correo.",
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-exito",
+              "leftValue": "={{ $json.statusCode }}",
+              "operator": {
+                "name": "filter.operator.number.equals",
+                "operation": "equals",
+                "type": "number"
+              },
+              "rightValue": 201
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          }
+        },
+        "options": {}
+      },
+      "position": [
+        720,
+        300
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ID_CREDENCIAL_GMAIL",
+          "name": "Gmail (OAuth2)"
+        }
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Gmail — Notificar al solicitante",
+      "notes": "Envía el correo de confirmación con el folio al solicitante. El remitente es la cuenta de Gmail conectada en n8n.",
+      "parameters": {
+        "emailType": "text",
+        "message": "=Hola {{ $('HTTP Request — Registrar en API').item.json.solicitud.nombre_solicitante }},\n\nTu solicitud de soporte técnico fue registrada correctamente.\n\nFolio: {{ $('HTTP Request — Registrar en API').item.json.folio }}\nCategoría: {{ $('HTTP Request — Registrar en API').item.json.solicitud.categoria }}\nPrioridad: {{ $('HTTP Request — Registrar en API').item.json.solicitud.prioridad }}\nEstado: {{ $('HTTP Request — Registrar en API').item.json.solicitud.estado }}\nDescripción: {{ $('HTTP Request — Registrar en API').item.json.solicitud.descripcion }}\n\nEl equipo de soporte técnico revisará tu solicitud y te contactará por este correo. Puedes consultar el estado de tu solicitud con tu folio.\n\nSaludos,\nEquipo de Soporte Técnico",
+        "options": {},
+        "sendTo": "={{ $('HTTP Request — Registrar en API').item.json.solicitud.email }}",
+        "subject": "=Solicitud de soporte registrada — Folio {{ $('HTTP Request — Registrar en API').item.json.folio }}"
+      },
+      "position": [
+        960,
+        200
+      ],
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1
+    },
+    {
+      "credentials": {
+        "googleSheetsOAuth2": {
+          "id": "ID_CREDENCIAL_GOOGLE_SHEETS",
+          "name": "Google Sheets (OAuth2)"
+        }
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Google Sheets — Escribir folio y estado",
+      "notes": "Escribe el folio generado por la API y el estado 'Recibida' en la misma fila que disparó el flujo (columnas Folio y Estado). La fila se identifica por su número de fila (row_number) del trigger.",
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Folio",
+              "id": "Folio",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Estado",
+              "id": "Estado",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "Estado": "={{ $('HTTP Request — Registrar en API').item.json.solicitud.estado }}",
+            "Folio": "={{ $('HTTP Request — Registrar en API').item.json.folio }}"
+          }
+        },
+        "documentId": {
+          "__rl": true,
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JO8IqTb_x9qIuJWmczViM3pEWd9V0-2HhA9cQFOSypk",
+          "mode": "url",
+          "value": "1JO8IqTb_x9qIuJWmczViM3pEWd9V0-2HhA9cQFOSypk"
+        },
+        "operation": "update",
+        "options": {},
+        "sheetName": {
+          "__rl": true,
+          "cachedResultName": "Respuestas",
+          "mode": "list",
+          "value": "Respuestas"
+        }
+      },
+      "position": [
+        1200,
+        200
+      ],
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2
+    },
+    {
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Sticky Note — Cómo funciona",
+      "parameters": {
+        "color": 4,
+        "content": "## Flujo: Forms → API → Gmail → Sheets\n\n1. **Google Sheets Trigger**: nueva fila en 'Respuestas' (Google Forms).\n2. **HTTP Request**: POST a https://<render-url>/api/solicitudes con origen 'google_forms'. Reemplazar <render-url> por la URL real de Render.\n3. **IF**: solo continúa si la API responde 201.\n4. **Gmail**: correo de confirmación con el folio al solicitante.\n5. **Google Sheets**: escribe el folio y el estado en la misma fila.\n\nCredenciales a conectar en n8n: Google Sheets (OAuth2) y Gmail (OAuth2). Ver README_N8N.md para el paso a paso.",
+        "height": 260,
+        "width": 420
+      },
+      "position": [
+        240,
+        80
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

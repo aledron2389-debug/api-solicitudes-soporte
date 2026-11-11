@@ -1,0 +1,11 @@
+# Entorno y secretos
+.env
+venv/
+__pycache__/
+
+# Base de datos local de pruebas (SQLite). En producción se usa Neon.
+*.db
+*.sqlite3
+
+# Sistema
+.DS_Store
