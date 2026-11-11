@@ -1,6 +1,7 @@
 # Sistema automatizado de gestión de solicitudes de soporte técnico
 
-API REST en **Python (Flask)** + **PostgreSQL en Neon**, desplegada en **Render**,
+API REST en **Python (Flask)** + **PostgreSQL en Neon**, ejecutada **localmente**
+(por instrucción del docente no se despliega en Render),
 con **Google Forms → Google Sheets**, automatización en **n8n** y notificaciones
 por **Gmail**. Dashboard en Google Sheets con total, por categoría y por prioridad.
 
@@ -16,7 +17,7 @@ por **Gmail**. Dashboard en Google Sheets con total, por categoría y por priori
 Google Forms ──► Google Sheets (Respuestas)
                      │  Google Sheets Trigger (nueva fila)
                      ▼
-                   n8n ──► POST /api/solicitudes ──► API Flask (Render)
+                   n8n ──► POST /api/solicitudes ──► API Flask (local, http://localhost:5000)
                      │                                  │  psycopg2
                      │                                  ▼
                      │                              PostgreSQL (Neon)
@@ -40,15 +41,15 @@ Dashboard: pestaña adicional en la misma hoja, con fórmulas sobre Respuestas.
 | `seed.py` | Misma siembra usando la capa de datos (`python seed.py`, `--reset` para repetir). |
 | `requirements.txt` | Flask, psycopg2-binary, Flask-CORS, python-dotenv, gunicorn. |
 | `.env.example` | Plantilla de variables de entorno (sin credenciales reales). |
-| `render.yaml` | Despliegue en Render (Blueprint). |
-| `Procfile` | `web: gunicorn app:app`. |
+| `render.yaml` | Blueprint de Render; sin uso en esta entrega (no hay despliegue en Render). |
+| `Procfile` | `web: gunicorn app:app` (solo comprobación local; sin despliegue). |
 | `n8n-workflow.json` | Workflow n8n exportable (importar en n8n). |
 | `README_N8N.md` | Configuración paso a paso de n8n, variables y formato del correo. |
 | `RESULTADOS_PRUEBAS.md` | Salidas reales de la prueba local. |
 
 ## API — Endpoints
 
-Base local: `http://localhost:5000` · Base en Render: `https://<render-url>`
+Base local: `http://localhost:5000` (única base; no hay URL de Render).
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -97,19 +98,20 @@ curl "http://localhost:5000/api/solicitudes?categoria=Hardware"
 
 Ver las salidas reales de esta prueba en [`RESULTADOS_PRUEBAS.md`](RESULTADOS_PRUEBAS.md).
 
-## Despliegue en Render + Neon (pendiente: cuentas del usuario)
+## Base en Neon y ejecución local (por instrucción del docente, sin Render)
 
-1. **Neon:** crear proyecto y base de datos PostgreSQL; copiar la `DATABASE_URL`.
+1. **Neon:** proyecto `solicitudes-soporte-tecnico` ya creado (PostgreSQL 18, base `neondb`); copiar la `DATABASE_URL` desde el panel de Neon.
 2. Aplicar el esquema y la siembra:
    ```bash
    psql "$DATABASE_URL" -f schema.sql
    psql "$DATABASE_URL" -f seed.sql
    ```
-3. **Render:** New → Web Service → conectar este repositorio (o subir `codigo/`), o usar el Blueprint con `render.yaml`.
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `gunicorn app:app`
-   - Variable de entorno: `DATABASE_URL` = la de Neon (en el panel de Render, nunca en el código).
-4. Verificar: `GET https://<render-url>/health` y `GET https://<render-url>/api/estadisticas`.
+3. **Ejecución local:** con la `DATABASE_URL` de Neon en `.env` (ver `.env.example`), arrancar la API en local:
+   ```bash
+   python app.py    # http://localhost:5000
+   ```
+   No se crea ningún servicio en Render y no se agrega tarjeta; `render.yaml` y `Procfile` quedan en el repo sin uso en esta entrega.
+4. Verificar: `GET http://localhost:5000/health` (debe indicar `base_datos: "postgres"`) y `GET http://localhost:5000/api/estadisticas`.
 5. **Google Forms + Sheets:** el formulario ya existe: **"Solicitud de soporte técnico"**, ID `1pXdV_doHLG_9azAX_bRc3H0ckMEBp_tF3SKdHceOZnw`, publicado y aceptando respuestas: https://docs.google.com/forms/d/e/1FAIpQLSexH3Tg4eKpLxxOdLH9NV06EsgZyZkBO727Fe0IqsMuBDwBVA/viewform — 5 preguntas obligatorias (Nombre completo, Correo electrónico, Categoría, Prioridad, Descripción del problema) con los valores exactos de los catálogos. La hoja también existe ("Solicitudes de soporte técnico - Respuestas y Dashboard", ID `1JO8IqTb_x9qIuJWmczViM3pEWd9V0-2HhA9cQFOSypk`, pestañas `Respuestas` y `Dashboard`). El formulario **no** está vinculado automáticamente a la hoja; la conexión la hace n8n (trigger de Sheets + HTTP Request a la API, ver `README_N8N.md`).
 6. **n8n:** importar `n8n-workflow.json` y seguir [`README_N8N.md`](README_N8N.md).
 7. **Dashboard en Sheets:** ya existe la pestaña `Dashboard` en la misma hoja, con fórmulas COUNTA/COUNTIF verificadas (total 0 por ahora, antes de registrar solicitudes). Columnas de `Respuestas`: Fecha (A), Folio (B), Nombre (C), Email (D), Categoría (E), Prioridad (F), Descripción (G), Estado (H), Origen (I), por lo que:
